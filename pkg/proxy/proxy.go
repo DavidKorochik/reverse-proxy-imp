@@ -88,7 +88,7 @@ func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
 
 	req := &http.Request{}
 
-	if addr := loadBalancer.Next(); addr != "" {
+	if addr := loadBalancer.Next(); addr != "" && loadBalancer.IsHealthy() {
 		req.Header.Set(consts.XForwardedServer, addr)
 	}
 
