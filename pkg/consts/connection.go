@@ -2,5 +2,5 @@ package consts
 
 const (
 	TCPConnection = "tcp"
-	LocalHost     = "0:0:0:0"
+	LocalHost     = "0.0.0.0"
 )
