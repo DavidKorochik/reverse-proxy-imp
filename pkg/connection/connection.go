@@ -3,25 +3,20 @@ package connection
 import (
 	"net"
 
-	"davidk/reverse-proxy-imp/pkg/consts"
 	"davidk/reverse-proxy-imp/pkg/errors"
 )
 
 type Connection struct {
 	connStr string
-	conn    net.Conn
+
+	conn net.Conn
 }
 
-func NewConnection(connString string) (*Connection, error) {
-	conn, err := net.Dial(consts.TCPConnection, connString)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize new TCP connection")
-	}
-
+func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
-		connStr: connString,
+		connStr: conn.RemoteAddr().String(),
 		conn:    conn,
-	}, nil
+	}
 }
 
 func (c *Connection) Close() error {
@@ -38,4 +33,23 @@ func (c *Connection) Read(bytes []byte) (int, error) {
 
 func (c *Connection) Addr() string {
 	return c.connStr
+}
+
+func GetConnectionsBatch() ([]net.Conn, error) {
+	conn1, err := net.Dial("tcp", "0:0:0:0:8000")
+	if err != nil {
+		return nil, errors.Wrap(err, "from conn1")
+	}
+
+	conn2, err := net.Dial("tcp", "0:0:0:0:8001")
+	if err != nil {
+		return nil, errors.Wrap(err, "from conn2")
+	}
+
+	conn3, err := net.Dial("tcp", "0:0:0:0:8002")
+	if err != nil {
+		return nil, errors.Wrap(err, "from conn3")
+	}
+
+	return []net.Conn{conn1, conn2, conn3}, nil
 }
