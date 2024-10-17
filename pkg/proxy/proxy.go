@@ -1,8 +1,10 @@
 package proxy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 
@@ -87,10 +89,14 @@ func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
 	loadBalancer := lb.NewLoadBalance(p.servers)
 
 	req := &http.Request{}
-
 	if addr := loadBalancer.Next(); addr != "" && loadBalancer.IsHealthy() {
-		req.Header.Set(consts.XForwardedServer, addr)
+		p.setRequestDetails(req, addr, packet)
 	}
 
 	loadBalancer.ServeHTTP(req)
+}
+
+func (p *Proxy) setRequestDetails(req *http.Request, addr string, packet *packets.Packet) {
+	req.Header.Set(consts.XForwardedServer, addr)
+	req.Body = io.NopCloser(bytes.NewReader(packet.Data()))
 }
