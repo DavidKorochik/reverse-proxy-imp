@@ -35,6 +35,7 @@ func (lb *LoadBalance) Next() string {
 	if lb.next > len(lb.servers) {
 		lb.next = 0
 	}
+
 	if err := lb.setHealthy(addr); err != nil {
 		return ""
 	}
