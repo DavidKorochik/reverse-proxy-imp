@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
+
+	"davidk/reverse-proxy-imp/pkg/lb"
 
 	"davidk/reverse-proxy-imp/pkg/connection"
 	"davidk/reverse-proxy-imp/pkg/consts"
 	"davidk/reverse-proxy-imp/pkg/errors"
+	"davidk/reverse-proxy-imp/pkg/packets"
 )
 
 type Stats struct {
@@ -63,7 +67,7 @@ func (p *Proxy) Add(conn *connection.Connection) error {
 		return err
 	}
 
-	// forward the packet data to the servers
+	p.deliverPacketToServer(packets.NewPacket(conn, data))
 
 	return nil
 }
@@ -77,4 +81,16 @@ func (p *Proxy) listen() error {
 
 		p.ready <- conn
 	}
+}
+
+func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
+	loadBalancer := lb.NewLoadBalance(p.servers)
+
+	req := &http.Request{}
+
+	if addr := loadBalancer.Next(); addr != "" {
+		req.Header.Set(consts.XForwardedServer, addr)
+	}
+
+	loadBalancer.ServeHTTP(req)
 }
