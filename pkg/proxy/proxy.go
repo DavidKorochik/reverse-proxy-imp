@@ -8,11 +8,10 @@ import (
 	"net"
 	"net/http"
 
-	"davidk/reverse-proxy-imp/pkg/lb"
-
 	"davidk/reverse-proxy-imp/pkg/connection"
 	"davidk/reverse-proxy-imp/pkg/consts"
 	"davidk/reverse-proxy-imp/pkg/errors"
+	"davidk/reverse-proxy-imp/pkg/lb"
 	"davidk/reverse-proxy-imp/pkg/packets"
 )
 
@@ -97,6 +96,5 @@ func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
 }
 
 func (p *Proxy) setRequestDetails(req *http.Request, addr string, packet *packets.Packet) {
-	req.Header.Set(consts.XForwardedServer, addr)
 	req.Body = io.NopCloser(bytes.NewReader(packet.Data()))
 }
