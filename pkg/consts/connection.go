@@ -1,3 +1,6 @@
 package consts
 
-const TCPConnection = "tcp"
+const (
+	TCPConnection = "tcp"
+	LocalHost     = "0:0:0:0"
+)

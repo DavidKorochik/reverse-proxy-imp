@@ -2,26 +2,19 @@ package connection
 
 import (
 	"net"
-
-	"davidk/reverse-proxy-imp/pkg/consts"
-	"davidk/reverse-proxy-imp/pkg/errors"
 )
 
 type Connection struct {
 	connStr string
-	conn    net.Conn
+
+	conn net.Conn
 }
 
-func NewConnection(connString string) (*Connection, error) {
-	conn, err := net.Dial(consts.TCPConnection, connString)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize new TCP connection")
-	}
-
+func NewConnection(conn net.Conn) *Connection {
 	return &Connection{
-		connStr: connString,
+		connStr: conn.RemoteAddr().String(),
 		conn:    conn,
-	}, nil
+	}
 }
 
 func (c *Connection) Close() error {
