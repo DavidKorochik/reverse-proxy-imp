@@ -89,12 +89,12 @@ func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
 
 	req := &http.Request{}
 	if addr := loadBalancer.Next(); addr != "" && loadBalancer.IsHealthy() {
-		p.setRequestDetails(req, addr, packet)
+		p.setRequestDetails(req, packet)
 	}
 
 	loadBalancer.ServeHTTP(req)
 }
 
-func (p *Proxy) setRequestDetails(req *http.Request, addr string, packet *packets.Packet) {
+func (p *Proxy) setRequestDetails(req *http.Request, packet *packets.Packet) {
 	req.Body = io.NopCloser(bytes.NewReader(packet.Data()))
 }
