@@ -1,10 +1,9 @@
 package proxy
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 
@@ -55,6 +54,7 @@ func (p *Proxy) Run() error {
 				return err
 			}
 		case <-p.ctx.Done():
+			p.stats.activeConnections--
 			break
 		}
 	}
@@ -62,13 +62,16 @@ func (p *Proxy) Run() error {
 
 func (p *Proxy) Add(conn *connection.Connection) error {
 	p.stats.activeConnections++
+	p.stats.totalConnections++
 
 	var data []byte
 	if _, err := conn.Read(data); err != nil {
+		p.stats.activeConnections--
 		return err
 	}
 
-	p.deliverPacketToServer(packets.NewPacket(conn, data))
+	if err := p.deliverPacketToServer(packets.NewPacket(conn, data)); err != nil {
+	}
 
 	return nil
 }
@@ -84,17 +87,32 @@ func (p *Proxy) listen() error {
 	}
 }
 
-func (p *Proxy) deliverPacketToServer(packet *packets.Packet) {
+func (p *Proxy) deliverPacketToServer(packet *packets.Packet) error {
 	loadBalancer := lb.NewLoadBalance(p.servers)
 
 	req := &http.Request{}
 	if addr := loadBalancer.Next(); addr != "" && loadBalancer.IsHealthy() {
-		p.setRequestDetails(req, packet)
+		newReq, err := p.getModifiedRequest(packet)
+		if err != nil {
+			p.stats.activeConnections--
+			return err
+		}
+
+		req = newReq
 	}
 
-	loadBalancer.ServeHTTP(req)
+	if err := loadBalancer.ServeHTTP(req); err != nil {
+		p.stats.activeConnections--
+		return err
+	}
 }
 
-func (p *Proxy) setRequestDetails(req *http.Request, packet *packets.Packet) {
-	req.Body = io.NopCloser(bytes.NewReader(packet.Data()))
+func (p *Proxy) getModifiedRequest(packet *packets.Packet) (*http.Request, error) {
+	var newReq *http.Request
+	if err := json.Unmarshal(packet.Data(), &newReq); err != nil {
+		p.stats.activeConnections--
+		return nil, err
+	}
+
+	return newReq, nil
 }

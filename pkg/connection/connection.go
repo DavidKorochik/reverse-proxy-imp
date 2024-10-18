@@ -35,6 +35,7 @@ func (c *Connection) Addr() string {
 	return c.connStr
 }
 
+// GetConnectionsBatch includes future servers that will run based on Docker or something
 func GetConnectionsBatch() ([]net.Conn, error) {
 	conn1, err := net.Dial("tcp", "0.0.0.0:8000")
 	if err != nil {

@@ -23,7 +23,6 @@ func (p *Packet) Len() int64 {
 	return p.len
 }
 
-// Data - only the packet data reaches the end destination
 func (p *Packet) Data() []byte {
 	return p.data
 }
