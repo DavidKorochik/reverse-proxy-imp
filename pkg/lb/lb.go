@@ -35,12 +35,23 @@ func (lb *LoadBalance) Next() string {
 	if lb.next > len(lb.servers) {
 		lb.next = 0
 	}
+
 	if err := lb.setHealthy(addr); err != nil {
 		return ""
 	}
 
 	lb.next++
 	return addr
+}
+
+func (lb *LoadBalance) ServeHTTP(req *http.Request) error {
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if res != nil || err != nil {
+		return err
+	}
+
+	return lb.validateResponseStatusCode(res)
 }
 
 func (lb *LoadBalance) setHealthy(server string) error {
@@ -57,16 +68,6 @@ func (lb *LoadBalance) setHealthy(server string) error {
 
 	lb.isHealthy = true
 	return nil
-}
-
-func (lb *LoadBalance) ServeHTTP(req *http.Request) error {
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if res != nil || err != nil {
-		return err
-	}
-
-	return lb.validateResponseStatusCode(res)
 }
 
 func (lb *LoadBalance) validateResponseStatusCode(res *http.Response) error {
