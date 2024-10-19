@@ -2,78 +2,65 @@ package lb
 
 import (
 	"net"
-	"net/http"
+	"sync"
 
-	"davidk/reverse-proxy-imp/pkg/errors"
+	"davidk/reverse-proxy-imp/pkg/consts"
+	"davidk/reverse-proxy-imp/pkg/proxy"
+	"davidk/reverse-proxy-imp/pkg/server"
 )
 
-type RoundRobin interface {
-	Next() string
+type Service interface {
+	Rotate() *server.Server
+	GetNextValidServer() *server.Server
+	GetServersPool() int
 }
 
-type LoadBalance struct {
-	next      int
-	isHealthy bool
+type LoadBalancer struct {
+	currentIndex int
 
-	servers []net.Conn
+	servers []*server.Server
+	proxy   proxy.Proxy
+	mux     sync.RWMutex
 }
 
-func NewLoadBalance(servers []net.Conn) *LoadBalance {
-	return &LoadBalance{
+func NewLoadBalancer(servers []*server.Server) Service {
+	return &LoadBalancer{
 		servers: servers,
 	}
 }
 
-func (lb *LoadBalance) IsHealthy() bool {
-	return lb.isHealthy
+func (lb *LoadBalancer) Rotate() *server.Server {
+	lb.mux.Lock()
+	lb.currentIndex = (lb.currentIndex + 1) % lb.GetServersPool()
+	lb.mux.Unlock()
+
+	return lb.servers[lb.currentIndex]
 }
 
-func (lb *LoadBalance) Next() string {
-	server := lb.servers[lb.next%len(lb.servers)]
-	addr := server.RemoteAddr().String()
-
-	if lb.next > len(lb.servers) {
-		lb.next = 0
+func (lb *LoadBalancer) GetNextValidServer() *server.Server {
+	for i := 0; i < lb.GetServersPool(); i++ {
+		if rotatedServer := lb.Rotate(); rotatedServer.IsHealthy() {
+			return rotatedServer
+		}
 	}
 
-	if err := lb.setHealthy(addr); err != nil {
-		return ""
-	}
-
-	lb.next++
-	return addr
-}
-
-func (lb *LoadBalance) ServeHTTP(req *http.Request) error {
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if res != nil || err != nil {
-		return err
-	}
-
-	return lb.validateResponseStatusCode(res)
-}
-
-func (lb *LoadBalance) setHealthy(server string) error {
-	res, err := http.Head(server)
-	if err != nil {
-		lb.isHealthy = false
-		return err
-	}
-
-	if err = lb.validateResponseStatusCode(res); err != nil {
-		lb.isHealthy = false
-		return err
-	}
-
-	lb.isHealthy = true
 	return nil
 }
 
-func (lb *LoadBalance) validateResponseStatusCode(res *http.Response) error {
-	if res.StatusCode >= http.StatusOK && res.StatusCode <= http.StatusBadRequest {
-		return errors.New("Response contains a bad status code. Please try again sending the request")
-	}
+func (lb *LoadBalancer) GetServersPool() int {
+	return len(lb.servers)
+}
 
-	return nil
+func (lb *LoadBalancer) Listen(servers chan server.Service) {
+	select {
+	case s := <-servers:
+		listener, err := net.Listen(consts.TCPConnection, s.GetURL().Host)
+		if err != nil {
+			break
+		}
+		listener.Accept()
+	}
+}
+
+func (lb *LoadBalancer) ServeServerRequestToProxy() {
 }
