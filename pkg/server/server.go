@@ -14,7 +14,7 @@ type Service interface {
 	IsHealthy() bool
 	IncreaseActiveConnections()
 	IncreaseTotalConnections()
-	GetServerStats() Stats
+	GetServerStats() *Stats
 	GetURL() *url.URL
 	ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	PerformServerHealthCheck(ctx context.Context, url *url.URL)
@@ -60,8 +60,8 @@ func (s *Server) IncreaseTotalConnections() {
 	s.serverStats.TotalConnections++
 }
 
-func (s *Server) GetServerStats() Stats {
-	return s.serverStats
+func (s *Server) GetServerStats() *Stats {
+	return &s.serverStats
 }
 
 func (s *Server) GetURL() *url.URL {
